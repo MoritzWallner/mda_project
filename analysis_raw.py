@@ -3,10 +3,9 @@ import pandas as pd
 from pathlib import Path
 import shapely
 import geopandas as gpd
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend to avoid conflicts with tkinter
 import matplotlib.pyplot as plt
-import folium
-import mapclassify
-
 
 def analysis(directory):
     # Function description: Analysis of raw data
@@ -34,6 +33,8 @@ def analysis(directory):
 
     for file in ordner.rglob("*.pkl"):
         vehicle_id, track_id, modality, modality_precission, data = pd.read_pickle(file)
+
+        print("Processing file:", file.name)
 
         if not modality:
             modality = "car"
@@ -106,6 +107,7 @@ def analysis(directory):
         figs.append(fig)
         axes.append(ax)
 
-    geo_map = gdf.explore("mode")
+    print("basic analysis done")
+    # geo_map = gdf.explore("mode")
 
-    return data_out, gdf, figs, axes, geo_map
+    return data_out, gdf, figs, axes, # geo_map

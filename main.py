@@ -1,6 +1,10 @@
 from dashboard import create_dashboard
+from analysis_raw import analysis
 
 print("test1")
 
-# Launch the dashboard
-create_dashboard()
+# Run analysis and get results
+data_out, gdf, figs, axes = analysis("./data/raw")
+
+# Launch the dashboard with analysis results
+create_dashboard(data_out, figs)
