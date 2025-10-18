@@ -2,18 +2,21 @@ import tkinter as tk
 from tkinter import ttk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
+import tempfile
+import os
 
 
-def create_dashboard(data_out, figs):
+def create_dashboard(data_out, figs, geo_map):
     """
     Create and display a mobility dashboard with track statistics.
 
     Args:
         data_out: DataFrame with statistics per modality
         figs: List of matplotlib figures with plots
+        geo_map: Folium interactive map object
     """
 
-    print("Creating dashboard...")
+    print("creating dashboard...")
     
     root = tk.Tk()
     root.title("Mobility Dashboard - Track Statistics")
@@ -89,6 +92,54 @@ def create_dashboard(data_out, figs):
 
     tree.pack(fill=tk.X, padx=5, pady=5)
 
+    # Map Section
+    map_frame = tk.LabelFrame(
+        scrollable_frame,
+        text="GPS Tracks Map - Interactive Visualization by Modality",
+        font=("Arial", 14, "bold"),
+        padx=10,
+        pady=10
+    )
+    map_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=10)
+
+    # Save folium map to HTML file
+    map_html_path = os.path.join(os.getcwd(), 'map_visualization.html')
+    geo_map.save(map_html_path)
+
+    # Provide button to open map in browser (most reliable approach)
+    info_label = tk.Label(
+        map_frame,
+        text="Interactive map with pan/zoom capabilities.\nClick button below to open in your browser.",
+        font=("Arial", 11),
+        justify='center'
+    )
+    info_label.pack(pady=20)
+
+    def open_map():
+        import webbrowser
+        webbrowser.open('file://' + os.path.abspath(map_html_path))
+
+    open_button = tk.Button(
+        map_frame,
+        text="Open Interactive Map in Browser",
+        command=open_map,
+        font=("Arial", 13, "bold"),
+        bg="#3498db",
+        fg="white",
+        padx=30,
+        pady=15,
+        cursor="hand2"
+    )
+    open_button.pack(pady=10)
+
+    map_path_label = tk.Label(
+        map_frame,
+        text=f"Saved to: {map_html_path}",
+        font=("Arial", 9),
+        fg="gray"
+    )
+    map_path_label.pack(pady=5)
+
     # Plots Section
     plots_frame = tk.LabelFrame(
         scrollable_frame,
@@ -141,3 +192,5 @@ def create_dashboard(data_out, figs):
 
     # Start the GUI event loop
     root.mainloop()
+
+    print("dashboard created, you can use it now.")

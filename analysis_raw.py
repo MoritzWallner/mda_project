@@ -42,8 +42,29 @@ def analysis(directory):
         ## Geopandas
         data_geo = data.loc[:, ["longitude", "latitude"]]
         data_geo = data_geo.dropna(subset=["longitude", "latitude"])
-        # Linestring
-        points = gpd.points_from_xy(data_geo.longitude, data_geo.latitude)
+
+        # Debug: print sample coordinates to verify order
+        if len(data_geo) > 0:
+            sample_lon = data_geo.iloc[0]["longitude"]
+            sample_lat = data_geo.iloc[0]["latitude"]
+            print(f"\nDEBUG {file.name}:")
+            print(f"  Raw from dataframe - longitude: {sample_lon}, latitude: {sample_lat}")
+            print(f"  Check: |lat|={abs(sample_lat)}, |lon|={abs(sample_lon)}")
+
+        # Linestring - swap if needed (Munich/London are ~48-51° lat, ~11° or -0.1° lon)
+        # If the "longitude" column has values > 20, it's actually latitude (columns are mislabeled)
+        if len(data_geo) > 0 and abs(data_geo.iloc[0]["longitude"]) > 20:
+            print(f"  -> SWAPPING: longitude column contains latitude values")
+            points = gpd.points_from_xy(data_geo.latitude, data_geo.longitude)
+        else:
+            print(f"  -> NOT swapping: columns appear correct")
+            points = gpd.points_from_xy(data_geo.longitude, data_geo.latitude)
+
+        # Print first point after creation
+        if len(points) > 0:
+            first_point = points[0]
+            print(f"  Result point: x={first_point.x}, y={first_point.y}")
+
         route = shapely.LineString(points.tolist())
         routes.append({"mode": modality, "geometry": route})
 
@@ -108,6 +129,60 @@ def analysis(directory):
         axes.append(ax)
 
     print("basic analysis done")
-    # geo_map = gdf.explore("mode")
 
-    return data_out, gdf, figs, axes, # geo_map
+    print("creating map...")
+    # Create interactive map with folium
+    import folium
+
+    # Debug: print unique modes in the data
+    unique_modes = gdf['mode'].unique()
+    print(f"Unique modes in data: {unique_modes}")
+
+    # Define colors for each modality
+    color_map = {'car': 'red', 'bike': 'blue', 'walk': 'green', 'bus': 'orange', 'train': 'purple'}
+
+    # Get center point for map
+    bounds = gdf.total_bounds  # minx, miny, maxx, maxy
+    center_lat = (bounds[1] + bounds[3]) / 2
+    center_lon = (bounds[0] + bounds[2]) / 2
+
+    print(f"\nDEBUG - Map bounds: {bounds}")
+    print(f"DEBUG - Center: lat={center_lat}, lon={center_lon}")
+    print(f"DEBUG - First geometry sample coords: {list(gdf.iloc[0]['geometry'].coords)[:3]}")
+
+    # Create folium map - folium expects [latitude, longitude]
+    geo_map = folium.Map(location=[center_lat, center_lon], zoom_start=12, tiles='OpenStreetMap')
+
+    # Add each track to the map with color based on mode
+    for idx, row in gdf.iterrows():
+        color = color_map.get(row['mode'], 'gray')
+        # Extract coordinates from LineString geometry - they're in (lon, lat) order
+        coords = [(lat, lon) for lon, lat in row['geometry'].coords]
+        if idx == 0:
+            print(f"DEBUG - First 3 coords after swap: {coords[:3]}")
+        folium.PolyLine(
+            coords,
+            color=color,
+            weight=3,
+            opacity=0.8,
+            tooltip=row['mode']
+        ).add_to(geo_map)
+
+    # Add legend - only show modes that actually exist in the data
+    legend_html = '''
+    <div style="position: fixed;
+                bottom: 50px; right: 50px; width: 150px; height: auto;
+                background-color: white; border:2px solid grey; z-index:9999;
+                font-size:14px; padding: 10px">
+    <p style="margin:0; font-weight:bold;">Transportation Mode</p>
+    '''
+    # Add legend entries for each unique mode in the data
+    for mode in unique_modes:
+        color = color_map.get(mode, 'gray')
+        legend_html += f'<p style="margin:5px 0;"><span style="color:{color};">■</span> {mode}</p>'
+    legend_html += '</div>'
+    geo_map.get_root().html.add_child(folium.Element(legend_html))
+
+    print("map created")
+    
+    return data_out, gdf, figs, axes, geo_map
