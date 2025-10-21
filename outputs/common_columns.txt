@@ -1,0 +1,8 @@
+altitude
+cal_distance_covered
+course
+hdop
+latitude
+longitude
+speed
+time_passed
