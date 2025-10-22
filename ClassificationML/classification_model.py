@@ -116,11 +116,13 @@ def test_model(data_path, model_path):
     cm = confusion_matrix(all_labels, predictions)
     disp = ConfusionMatrixDisplay(confusion_matrix=cm)
     disp.plot()
-    plt.savefig(f'outputs/confusion_matrix_{data_path.split("/")[-1]}.png')
+    output_path = f'outputs/confusion_matrix_{data_path.split("/")[-1]}.png'
+    plt.savefig(output_path)
+    return output_path
 
 if __name__ == "__main__":
-    train_dataset = Dataset(data_folder='data/raw/User1_Smartphone')
+    #train_dataset = Dataset(data_folder='data/raw/User1_Smartphone')
 
-    train_model(train_dataset)
+    #train_model(train_dataset)
 
-    #test_model(data_path='data/raw/User1_Smartphone', model_path='models/classification_model.joblib')
+    test_model(data_path='data/raw/User1_Smartphone', model_path='models/classification_model.joblib')

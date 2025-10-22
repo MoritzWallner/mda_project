@@ -1,9 +1,19 @@
+from doctest import testfile
+import glob
 import tkinter as tk
 from tkinter import ttk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 import tempfile
 import os
+from ClassificationML.classification_model import *
+from matplotlib.image import imread
+
+try:
+    from tkinterdnd2 import TkinterDnD, DND_FILES
+except ImportError:
+    TkinterDnD = None
+    DND_FILES = None
 
 
 def create_dashboard(data_out, figs, geo_map):
@@ -18,7 +28,10 @@ def create_dashboard(data_out, figs, geo_map):
 
     print("creating dashboard...")
     
-    root = tk.Tk()
+    if TkinterDnD is not None:
+        root = TkinterDnD.Tk()
+    else:
+        root = tk.Tk()
     root.title("Mobility Dashboard - Track Statistics")
     root.geometry("1000x900")
 
@@ -168,6 +181,81 @@ def create_dashboard(data_out, figs, geo_map):
     # Configure grid weights for responsive layout
     for i in range(num_cols):
         plots_frame.grid_columnconfigure(i, weight=1)
+
+    # Plots for ML statistics
+    ml_frame = tk.LabelFrame(
+        scrollable_frame,
+        text="Classification Model Test Results Confusion Matrix",
+        font=("Arial", 14, "bold"),
+        padx=10,
+        pady=10
+    )
+    ml_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+    # Load ML confusion matrix plot
+    ml_fig = Figure(figsize=(8, 6))
+    ml_ax = ml_fig.add_subplot(111) 
+    ml_img_path = os.path.join('outputs', 'confusion_matrix_test.png')
+    
+    img = imread(ml_img_path)
+    ml_ax.imshow(img)
+    ml_ax.axis('off')
+    canvas_ml = FigureCanvasTkAgg(ml_fig, master=ml_frame)
+    canvas_ml.draw()
+    canvas_ml.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+    
+    # Add a text
+    ml_text = tk.Text(ml_frame, height=4, font=("Arial", 15), background='white', fg='black', padx=10, pady=10)
+    ml_text.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+    ml_text.insert(tk.END, "Classes Labels: 0: Car; 1: Pedestrian; 2: Still")
+
+    # make a drag and drop for a test folder or file to test the ML model on
+    # Drag and Drop Section for ML Model Testing
+    dnd_frame = tk.LabelFrame(
+        scrollable_frame,
+        text="Test ML Model - Drag & Drop Folder or File",
+        font=("Arial", 14, "bold"),
+        padx=10,
+        pady=10
+    )
+    dnd_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+    dnd_label = tk.Label(
+        dnd_frame,
+        text="Drag and drop a folder or file here to test the ML model.",
+        font=("Arial", 12),
+        bg="#ecf0f1",
+        fg="#2c3e50",
+        height=4
+    )
+    dnd_label.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+    ml_fig_2 = Figure(figsize=(8, 6))
+    ml_ax_2 = ml_fig_2.add_subplot(111)
+
+    # Drag and drop support (works on macOS with TkinterDnD2)
+    output_path = tk.StringVar(value=ml_img_path)
+    if DND_FILES is None:
+        dnd_label.config(text="Drag & drop requires TkinterDnD2 package.\nInstall with: pip install TkinterDnD2")
+    else:
+        try:
+            dnd_label.drop_target_register(DND_FILES)
+
+            def handle_drop(event):
+                dropped_path = event.data.strip()
+                
+                dnd_label.config(text=f"Dropped: {dropped_path}\nTesting ML model...")
+                new_path = test_model(dropped_path, 'models/classification_model.joblib')
+                output_path.set(new_path)
+                img = imread(new_path)
+                ml_ax_2.imshow(img)
+                ml_ax_2.axis('off')
+                canvas_ml = FigureCanvasTkAgg(ml_fig_2, master=dnd_frame)
+                canvas_ml.draw()
+                canvas_ml.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+
+            dnd_label.dnd_bind('<<Drop>>', handle_drop)
+        except tk.TclError:
+            dnd_label.config(text="Drag & drop unavailable: tkdnd extension not loaded.")
 
     # Pack canvas and scrollbars
     canvas.pack(side="left", fill="both", expand=True)
